@@ -166,6 +166,7 @@ html, body { background: var(--bg); color: var(--text); font-family: 'IBM Plex S
 .b-open   { background: var(--bg3);      color: var(--text2); border: 1px solid var(--border2); }
 .b-won    { background: var(--green-bg); color: var(--green); border: 1px solid #1a5c30; }
 .b-lost   { background: var(--red-bg);   color: var(--red);   border: 1px solid #5c1a1a; }
+.b-sim    { background: #1a0a3c;         color: #A78BFA;      border: 1px solid #3a1e8c; }
 .pnl-g { color: var(--green); font-weight: 500; font-family: 'IBM Plex Mono', monospace; }
 .pnl-r { color: var(--red);   font-weight: 500; font-family: 'IBM Plex Mono', monospace; }
 .pnl-n { color: var(--text2); font-family: 'IBM Plex Mono', monospace; }
@@ -313,6 +314,16 @@ const API = "http://localhost:5000/api";
 let pnlChart = null;
 let state = null;
 
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function simBadge(source) {
+  return source === 'simulation' || source === 'SIM'
+    ? '<span class="badge b-sim" title="Simulated data — not a live result">SIM</span>' : '';
+}
+
 // ── Navigation ────────────────────────────────────────────────────────────────
 function showPage(name, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -328,11 +339,9 @@ async function apiAction(action) {
     document.getElementById('statusLabel').textContent = 'Scanning...';
   }
   try {
-    const method = action === 'scan' ? 'GET' : 'POST';
-    const url = action === 'scan' ? `${API}/state` : `${API}/${action}`;
-    const r = await fetch(url, { method });
+    const r = await fetch(`${API}/${action}`, { method: 'POST' });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    if (action !== 'scan') setTimeout(fetchState, 500);
+    setTimeout(fetchState, action === 'scan' ? 3000 : 500);
   } catch (e) {
     showOfflineState();
     console.warn('API not reachable:', e.message, '— showing demo mode');
@@ -495,9 +504,10 @@ function renderOpenPositions(positions) {
   el.innerHTML = open.map(p => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:11px">
       <div>
-        <span style="font-weight:500">${p.city}</span>
-        <span style="color:var(--text3);margin:0 6px">${p.subtitle}</span>
-        <span class="badge ${p.direction==='YES'?'b-yes':'b-no'}">${p.direction}</span>
+        <span style="font-weight:500">${esc(p.city)}</span>
+        <span style="color:var(--text3);margin:0 6px">${esc(p.subtitle)}</span>
+        <span class="badge ${p.direction==='YES'?'b-yes':'b-no'}">${esc(p.direction)}</span>
+        ${simBadge(p.source)}
       </div>
       <div style="text-align:right">
         <div class="mono" style="color:var(--green)">+${(p.edge*100).toFixed(1)}% edge</div>
@@ -509,16 +519,16 @@ function renderOpenPositions(positions) {
 
 function tradeRowHtml(t) {
   const settled = t.settled_at ? t.settled_at.slice(0,16).replace('T',' ') : '—';
-  const dirBadge = `<span class="badge ${t.direction==='YES'?'b-yes':'b-no'}">${t.direction}</span>`;
+  const dirBadge = `<span class="badge ${t.direction==='YES'?'b-yes':'b-no'}">${esc(t.direction)}</span>`;
   const statusBadge = t.status==='open'?'<span class="badge b-open">Open</span>':
     t.status==='won'?'<span class="badge b-won">Won</span>':'<span class="badge b-lost">Lost</span>';
   const pnl = t.pnl;
   const pnlStr = pnl === null || pnl === undefined ? '<span class="pnl-n">pending</span>' :
     `<span class="${pnl>=0?'pnl-g':'pnl-r'}">${pnl>=0?'+$':'-$'}${Math.abs(pnl).toFixed(2)}</span>`;
   return `<div class="tlog-row">
-    <span class="mono" style="color:var(--text3);font-size:10px">${settled}</span>
-    <span>${t.city}</span>
-    <span style="color:var(--text2)">${t.subtitle||''}</span>
+    <span class="mono" style="color:var(--text3);font-size:10px">${esc(settled)}</span>
+    <span>${esc(t.city)} ${simBadge(t.settle_source || t.source)}</span>
+    <span style="color:var(--text2)">${esc(t.subtitle||'')}</span>
     <span>${dirBadge}</span>
     <span class="mono" style="color:var(--amber)">${(t.edge*100).toFixed(1)}%</span>
     <span>${statusBadge}</span>
@@ -548,8 +558,8 @@ function renderSignals(signals) {
     const fillColor = s.direction==='YES' ? '#60A5FA' : '#FBBF24';
     return `<div class="sig-card ${hasEdge?'edge':''}">
       <span class="edge-tag ${hasEdge?'et-edge':'et-none'}">${hasEdge?'+'+( edge*100).toFixed(1)+'%':'No edge'}</span>
-      <div class="sig-city">${s.city}</div>
-      <div class="sig-sub">${s.subtitle||''}</div>
+      <div class="sig-city">${esc(s.city)} ${simBadge(s.source)}</div>
+      <div class="sig-sub">${esc(s.subtitle||'')}</div>
       <div class="sig-row"><span class="sig-lbl">GFS forecast</span><span class="sig-val">${((s.forecast_prob||0)*100).toFixed(1)}%</span></div>
       <div class="bar-wrap"><div class="bar-fill" style="width:${fillPct}%;background:${fillColor}"></div></div>
       <div class="sig-row" style="margin-top:6px"><span class="sig-lbl">Kalshi mid</span><span class="sig-val">${((s.kalshi_mid||0)*100).toFixed(1)}¢</span></div>
@@ -568,7 +578,11 @@ function renderStatus(s) {
   label.style.color = st==='running'?'var(--green)':st==='demo'?'var(--amber)':'var(--text2)';
   if (s.last_scan) {
     const d = new Date(s.last_scan);
-    last.textContent = 'Last scan: ' + d.toLocaleTimeString();
+    const mode = s.data_mode === 'live' ? '' :
+      s.data_mode === 'mixed' ? ' · partly simulated' :
+      s.data_mode === 'simulation' ? ' · SIMULATED data' : '';
+    last.textContent = 'Last scan: ' + d.toLocaleTimeString() + mode;
+    last.style.color = mode && s.data_mode !== 'mixed' ? 'var(--amber)' : '';
   }
   document.getElementById('startBtn').disabled = st === 'running';
   document.getElementById('stopBtn').disabled  = st !== 'running';
@@ -583,7 +597,7 @@ function renderLogs(lines) {
     else if (l.includes('LOSS') || l.includes('ERROR') || l.includes('error')) cls = 'log-err';
     else if (l.includes('TRADE')) cls = 'log-trade';
     else if (l.includes('WARNING') || l.includes('warning')) cls = 'log-warn';
-    return `<div class="${cls}">${l}</div>`;
+    return `<div class="${cls}">${esc(l)}</div>`;
   }).join('');
   el.scrollTop = el.scrollHeight;
 }
