@@ -24,18 +24,25 @@ API at `http://localhost:5000` every 5 seconds.
 
 ```bash
 python3 backtest.py              # ~last 80 days of real forecasts + actuals
-python3 backtest.py --days 60
+python3 backtest.py --kalshi     # also replay against real Kalshi prices
 ```
 
 Pulls 1-day-ahead historical forecasts (Open-Meteo previous-runs API) and
 observed highs (ERA5 archive), calibrates the forecast error std, and runs the
 strategy against three market models — `efficient` (null: market knows the
 forecast), `climatology` (market ignores forecasts; upper bound), and `noisy`
-(random 5–20% mispricing). Historical Kalshi order books aren't freely
-available, so the market side is modeled, not replayed: the backtest tells you
-whether the *forecast* has skill and what fees cost, not what Kalshi would
-actually have paid. Falls back to clearly-labeled synthetic weather when the
-APIs are unreachable. Results are saved to `data/backtest_results.json`.
+(random 5–20% mispricing).
+
+With `--kalshi` it additionally replays the strategy against **real market
+data**: for every settled daily-high market it samples the yes mid from hourly
+candlesticks the day before the event (~18:00 UTC), applies the same trading
+rules, and settles on the market's official result. That row is the real
+profitability measure; the modeled rows just bracket the possibilities. The
+first `--kalshi` run is slow (one candlesticks request per market, throttled);
+prices are cached in `data/kalshi_price_cache.json` so reruns are instant.
+
+Falls back to clearly-labeled synthetic weather when the APIs are unreachable
+(`--kalshi` aborts instead). Results are saved to `data/backtest_results.json`.
 
 For the full walkthrough (including Windows/Mac/Linux specifics), open
 `SETUP_GUIDE.html` in a browser.

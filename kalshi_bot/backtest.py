@@ -28,8 +28,8 @@ Usage:
 Real Kalshi price history (the missing piece) would replace the market
 models above; see the candlesticks endpoint in the Kalshi API docs.
 """
-import argparse, json, math, random, statistics, sys
-from datetime import date, timedelta
+import argparse, json, math, random, statistics, sys, time
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -37,13 +37,15 @@ import requests
 sys.path.insert(0, str(Path(__file__).parent / "bot"))
 import engine
 from engine import (MARKETS, MIN_EDGE, STAKE, FEE_RATE, FORECAST_STD_F, MAX_POSITIONS,
-                    MIN_PRICE, prob_in_range, temp_in_range)
+                    MIN_PRICE, KALSHI_BASE, prob_in_range, temp_in_range)
 
 PREV_RUNS_API = "https://previous-runs-api.open-meteo.com/v1/forecast"
 ARCHIVE_API   = "https://archive-api.open-meteo.com/v1/archive"
 ARCHIVE_DELAY_DAYS = 6      # ERA5 archive lags realtime by ~5 days
 CLIM_WINDOW   = 14          # trailing days the "climatology" market averages
+DECISION_HOUR_UTC = 18      # when "yesterday's" Kalshi price is sampled (~midday US)
 RESULTS_FILE  = engine.BASE_DIR / "data" / "backtest_results.json"
+CACHE_FILE    = engine.BASE_DIR / "data" / "kalshi_price_cache.json"
 
 # ── Historical data ───────────────────────────────────────────────────────────
 
@@ -161,7 +163,9 @@ def run_strategy(data, model, bot_std, std_cal, clim_stds, seed):
         taken = candidates[:MAX_POSITIONS]
         trades.extend(taken)
         daily_pnl[day] = sum(t["pnl"] for t in taken)
+    return _summarize(model, bot_std, trades, daily_pnl)
 
+def _summarize(model, bot_std, trades, daily_pnl):
     total = sum(t["pnl"] for t in trades)
     outlay = sum(t["outlay"] for t in trades)
     wins = sum(1 for t in trades if t["won"])
@@ -176,6 +180,129 @@ def run_strategy(data, model, bot_std, std_cal, clim_stds, seed):
             "pnl_per_trade": round(total / len(trades), 2) if trades else None,
             "roi_per_trade": round(total / outlay, 4) if outlay else None,
             "max_drawdown": round(mdd, 2)}
+
+# ── Real Kalshi prices ────────────────────────────────────────────────────────
+
+def _load_cache():
+    try:
+        return json.loads(CACHE_FILE.read_text())
+    except Exception:
+        return {}
+
+def _save_cache(cache):
+    CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    CACHE_FILE.write_text(json.dumps(cache))
+
+def fetch_settled_markets(series, days):
+    """All settled markets in a series that closed within the last `days`."""
+    out, cursor = [], None
+    min_close = int(time.time()) - days * 86400
+    while True:
+        params = {"series_ticker": series, "status": "settled",
+                  "limit": 200, "min_close_ts": min_close}
+        if cursor:
+            params["cursor"] = cursor
+        r = requests.get(f"{KALSHI_BASE}/markets", params=params, timeout=20)
+        r.raise_for_status()
+        j = r.json()
+        batch = j.get("markets", [])
+        out.extend(batch)
+        cursor = j.get("cursor")
+        if not cursor or not batch:
+            return out
+
+def event_date_from_ticker(ticker):
+    """KXHIGHNY-26JUN10-B70 → date(2026, 6, 10)."""
+    parts = ticker.split("-")
+    if len(parts) < 2:
+        return None
+    try:
+        return datetime.strptime(parts[1].title(), "%y%b%d").date()
+    except ValueError:
+        return None
+
+def fetch_decision_price(series, ticker, event_date):
+    """Yes mid the day before the event, from the hourly candle nearest
+    DECISION_HOUR_UTC. None if the market never had a two-sided quote."""
+    day_start = datetime(event_date.year, event_date.month, event_date.day,
+                         tzinfo=timezone.utc) - timedelta(days=1)
+    start = int(day_start.timestamp())
+    r = requests.get(f"{KALSHI_BASE}/series/{series}/markets/{ticker}/candlesticks",
+                     params={"start_ts": start, "end_ts": start + 86400,
+                             "period_interval": 60}, timeout=20)
+    r.raise_for_status()
+    target = start + DECISION_HOUR_UTC * 3600
+    best = None
+    for c in r.json().get("candlesticks", []):
+        ts = c.get("end_period_ts") or 0
+        bid = (c.get("yes_bid") or {}).get("close")
+        ask = (c.get("yes_ask") or {}).get("close")
+        if not bid or not ask or bid <= 0 or ask >= 100:
+            continue
+        if best is None or abs(ts - target) < abs(best[0] - target):
+            best = (ts, round((bid + ask) / 200, 4))  # cents → probability
+    return best[1] if best else None
+
+def run_kalshi_strategy(data, bot_std, days):
+    """Replay the trading rules against real Kalshi decision prices, settling
+    on each market's official result. Prices are cached on disk, so the first
+    run is slow (one candlesticks request per market) and reruns are instant."""
+    cache = _load_cache()
+    by_day = {}
+    n_markets = n_priced = 0
+    for mkt in MARKETS:
+        forecasts, _ = data[mkt["city"]]
+        settled = fetch_settled_markets(mkt["prefix"], days + 3)
+        for m in settled:
+            ed = event_date_from_ticker(m.get("ticker", ""))
+            result = m.get("result")
+            if ed is None or result not in ("yes", "no") or ed.isoformat() not in forecasts:
+                continue
+            sub = m.get("subtitle") or m.get("yes_sub_title") or m.get("title") or ""
+            rng = engine.parse_range(sub)
+            if rng is None:
+                continue
+            n_markets += 1
+            ticker = m["ticker"]
+            if ticker not in cache:
+                try:
+                    cache[ticker] = fetch_decision_price(mkt["prefix"], ticker, ed)
+                except requests.RequestException:
+                    cache[ticker] = None
+                time.sleep(0.1)  # stay polite to the API
+            mid = cache[ticker]
+            if not mid:
+                continue
+            n_priced += 1
+            low, high = rng
+            p_bot = prob_in_range(low, high, forecasts[ed.isoformat()], bot_std)
+            direction = "YES" if p_bot > mid else "NO"
+            edge = (p_bot - mid) if direction == "YES" else (mid - p_bot)
+            if edge < MIN_EDGE:
+                continue
+            price = mid if direction == "YES" else 1 - mid
+            if price < MIN_PRICE:
+                continue
+            contracts = max(1, int(STAKE // max(price, 0.01)))
+            cost = contracts * price
+            fee = FEE_RATE * contracts * mid * (1 - mid)
+            yes_won = result == "yes"
+            won = yes_won if direction == "YES" else not yes_won
+            pnl = (contracts if won else 0) - cost - fee
+            by_day.setdefault(ed.isoformat(), []).append(
+                {"edge": round(edge, 4), "won": won, "pnl": round(pnl, 2),
+                 "outlay": round(cost + fee, 2)})
+    _save_cache(cache)
+    trades, daily_pnl = [], {}
+    for day, cands in by_day.items():
+        cands.sort(key=lambda t: -t["edge"])
+        taken = cands[:MAX_POSITIONS]
+        trades.extend(taken)
+        daily_pnl[day] = sum(t["pnl"] for t in taken)
+    summary = _summarize("kalshi (real)", bot_std, trades, daily_pnl)
+    summary["markets_seen"] = n_markets
+    summary["markets_priced"] = n_priced
+    return summary
 
 def calibrate(data):
     """Forecast-error stats per city and pooled."""
@@ -209,8 +336,13 @@ def main():
     ap = argparse.ArgumentParser(description="Backtest the Kalshi weather strategy")
     ap.add_argument("--days", type=int, default=80, help="history length (max ~85 real)")
     ap.add_argument("--synthetic", action="store_true", help="use generated weather")
+    ap.add_argument("--kalshi", action="store_true",
+                    help="also replay against real Kalshi prices and official results")
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
+
+    if args.kalshi and args.synthetic:
+        ap.error("--kalshi needs real weather data; drop --synthetic")
 
     rng = random.Random(args.seed)
     data, mode = {}, "real"
@@ -223,6 +355,9 @@ def main():
                 data[mkt["city"]] = ({d: fc[d] for d in common}, {d: ac[d] for d in common})
                 print(f"  {mkt['city']}: {len(common)} days of forecast+actual")
         except requests.RequestException as e:
+            if args.kalshi:
+                sys.exit(f"⚠  Historical weather APIs unreachable ({e.__class__.__name__}) — "
+                         f"--kalshi requires real data, aborting.")
             print(f"\n⚠  Historical APIs unreachable ({e.__class__.__name__}) — "
                   f"falling back to SYNTHETIC weather.\n"
                   f"   Synthetic results test the harness, not real forecast skill.\n")
@@ -249,15 +384,29 @@ def main():
     print(f"  {'market model':<16}{'bot std':>8}{'trades':>8}{'win%':>7}{'total P&L':>11}"
           f"{'$/trade':>9}{'ROI/trade':>11}{'max DD':>9}")
     results = []
+    def show(r):
+        wr = f"{r['win_rate']:.0%}" if r['win_rate'] is not None else "—"
+        ppt = f"{r['pnl_per_trade']:+.2f}" if r['pnl_per_trade'] is not None else "—"
+        roi = f"{r['roi_per_trade']:+.1%}" if r['roi_per_trade'] is not None else "—"
+        print(f"  {r['model']:<16}{r['bot_std']:>8}{r['trades']:>8}{wr:>7}{r['total_pnl']:>+11.2f}"
+              f"{ppt:>9}{roi:>11}{r['max_drawdown']:>9.2f}")
     for model in ("efficient", "climatology", "noisy"):
         for bot_std in (FORECAST_STD_F, std_cal):
             r = run_strategy(data, model, bot_std, std_cal, clim_stds, args.seed)
             results.append(r)
-            wr = f"{r['win_rate']:.0%}" if r['win_rate'] is not None else "—"
-            ppt = f"{r['pnl_per_trade']:+.2f}" if r['pnl_per_trade'] is not None else "—"
-            roi = f"{r['roi_per_trade']:+.1%}" if r['roi_per_trade'] is not None else "—"
-            print(f"  {model:<16}{bot_std:>8}{r['trades']:>8}{wr:>7}{r['total_pnl']:>+11.2f}"
-                  f"{ppt:>9}{roi:>11}{r['max_drawdown']:>9.2f}")
+            show(r)
+
+    if args.kalshi:
+        print("\n  Fetching real Kalshi prices (first run is slow; cached after)...")
+        try:
+            for bot_std in (FORECAST_STD_F, std_cal):
+                r = run_kalshi_strategy(data, bot_std, args.days)
+                results.append(r)
+                show(r)
+            print(f"  ({r['markets_priced']}/{r['markets_seen']} settled markets had a "
+                  f"usable quote at decision time)")
+        except requests.RequestException as e:
+            print(f"  ⚠  Kalshi API unreachable or shape mismatch ({e}); skipping real-price rows")
 
     print(f"""
 How to read this:
@@ -267,8 +416,10 @@ How to read this:
                traders are this lazy (they usually aren't)
   noisy        assumes 5-20% random mispricing — the live engine's sim
                assumption; treat as illustrative only
-The strategy is only viable if real Kalshi quotes sit closer to climatology
-than to the forecast. Verify with live paper trading before any real money.""")
+  kalshi(real) actual decision-time quotes, settled on official results —
+               the only row that measures real profitability (run --kalshi)
+The strategy is only viable if the kalshi row (or live paper trading)
+is profitable; the modeled rows just bracket the possibilities.""")
 
     RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
     RESULTS_FILE.write_text(json.dumps(
