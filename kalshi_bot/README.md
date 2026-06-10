@@ -20,6 +20,23 @@ python3 run.py
 Then open `dashboard/index.html` in your browser. The dashboard polls the bot
 API at `http://localhost:5000` every 5 seconds.
 
+## Backtest
+
+```bash
+python3 backtest.py              # ~last 80 days of real forecasts + actuals
+python3 backtest.py --days 60
+```
+
+Pulls 1-day-ahead historical forecasts (Open-Meteo previous-runs API) and
+observed highs (ERA5 archive), calibrates the forecast error std, and runs the
+strategy against three market models — `efficient` (null: market knows the
+forecast), `climatology` (market ignores forecasts; upper bound), and `noisy`
+(random 5–20% mispricing). Historical Kalshi order books aren't freely
+available, so the market side is modeled, not replayed: the backtest tells you
+whether the *forecast* has skill and what fees cost, not what Kalshi would
+actually have paid. Falls back to clearly-labeled synthetic weather when the
+APIs are unreachable. Results are saved to `data/backtest_results.json`.
+
 For the full walkthrough (including Windows/Mac/Linux specifics), open
 `SETUP_GUIDE.html` in a browser.
 

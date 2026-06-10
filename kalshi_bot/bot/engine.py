@@ -16,6 +16,7 @@ SCAN_INTERVAL   = 300
 MIN_EDGE        = 0.08
 STAKE           = 50        # target outlay per trade, dollars
 MAX_POSITIONS   = 6
+MIN_PRICE       = 0.10      # skip contracts priced below this — thin books, huge sizing
 START_BANKROLL  = 1000.0
 FEE_RATE        = 0.07      # Kalshi trading fee ≈ 0.07 · price · (1 − price) per contract
 FORECAST_STD_F  = 3.0       # assumed 1-day-ahead high-temp forecast error, °F
@@ -307,6 +308,8 @@ def scan(state):
                 continue
 
             price = mid if direction == "YES" else round(1 - mid, 4)
+            if price < MIN_PRICE:
+                continue
             contracts = max(1, int(STAKE // max(price, 0.01)))
             cost = round(contracts * price, 2)
             fee = round(FEE_RATE * contracts * mid * (1 - mid), 2)
