@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalshi Bot — Setup Guide</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --bg: #0C0D0F;
+  --bg2: #131417;
+  --bg3: #1A1C21;
+  --border: #252730;
+  --text: #E8EAF0;
+  --text2: #8B8FA8;
+  --text3: #555870;
+  --green: #4ADE80;
+  --green-d: #166534;
+  --green-bg: #052010;
+  --blue: #60A5FA;
+  --blue-bg: #051524;
+  --amber: #FBBF24;
+  --amber-bg: #1A1000;
+  --red: #F87171;
+  --red-bg: #1C0505;
+  --purple: #A78BFA;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+.layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  padding: 28px 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.sidebar-logo {
+  padding: 0 24px 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.logo-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--green);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.logo-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+.logo-sub {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+.nav-section {
+  padding: 4px 24px 8px;
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 8px;
+}
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 24px;
+  color: var(--text2);
+  text-decoration: none;
+  font-size: 13px;
+  transition: all 0.15s;
+  border-left: 2px solid transparent;
+}
+.nav-link:hover { background: var(--bg3); color: var(--text); }
+.nav-link .step-num {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  flex-shrink: 0;
+  color: var(--text3);
+}
+.nav-link.done .step-num { background: var(--green-bg); border-color: #1a5c30; color: var(--green); }
+
+.os-pills {
+  display: flex;
+  gap: 6px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+.os-pill {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--bg3);
+  color: var(--text2);
+  font-family: 'IBM Plex Mono', monospace;
+  transition: all 0.15s;
+}
+.os-pill.active { background: var(--blue-bg); color: var(--blue); border-color: #1a3a5c; }
+
+/* Main */
+.main { padding: 48px 56px; max-width: 820px; }
+
+.page-header { margin-bottom: 48px; }
+.page-eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--green);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.page-title { font-size: 32px; font-weight: 700; line-height: 1.2; margin-bottom: 12px; }
+.page-desc { font-size: 14px; color: var(--text2); line-height: 1.7; max-width: 560px; }
+
+/* Step cards */
+.step {
+  margin-bottom: 40px;
+  scroll-margin-top: 32px;
+}
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.step-badge {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.step-badge.green  { background: var(--green-bg);  color: var(--green);  border: 1px solid #1a5c30; }
+.step-badge.blue   { background: var(--blue-bg);   color: var(--blue);   border: 1px solid #1a3a5c; }
+.step-badge.amber  { background: var(--amber-bg);  color: var(--amber);  border: 1px solid #3a2800; }
+.step-badge.purple { background: #1a0a3c;          color: var(--purple); border: 1px solid #3a1e8c; }
+.step-badge.red    { background: var(--red-bg);    color: var(--red);    border: 1px solid #5c1a1a; }
+
+.step-title { font-size: 18px; font-weight: 600; }
+.step-subtitle { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+.step-body { margin-left: 46px; }
+
+.step-desc {
+  color: var(--text2);
+  font-size: 13px;
+  margin-bottom: 14px;
+  line-height: 1.75;
+}
+
+/* Code blocks */
+.code-block {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  position: relative;
+}
+.code-label {
+  padding: 8px 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.copy-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  transition: all 0.15s;
+}
+.copy-btn:hover { border-color: var(--green); color: var(--green); }
+.copy-btn.copied { border-color: var(--green); color: var(--green); }
+pre {
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--text);
+}
+.cmd { color: var(--green); }
+.cmt { color: var(--text3); font-style: italic; }
+.str { color: var(--amber); }
+.kw  { color: var(--blue); }
+.num { color: var(--purple); }
+
+/* OS-specific content */
+.os-block { display: none; }
+.os-block.mac  .os-show-mac,
+.os-block.win  .os-show-win,
+.os-block.lin  .os-show-lin { display: block; }
+
+.show-mac, .show-win, .show-lin { display: none; }
+
+/* Info boxes */
+.info-box {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.info-box.tip   { background: var(--green-bg); border: 1px solid #1a5c30; color: #a0d4a0; }
+.info-box.warn  { background: var(--amber-bg); border: 1px solid #3a2800; color: #d4b060; }
+.info-box.note  { background: var(--blue-bg);  border: 1px solid #1a3a5c; color: #90b8e8; }
+.info-box.danger{ background: var(--red-bg);   border: 1px solid #5c1a1a; color: #e89090; }
+.info-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+/* Inline code */
+code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--amber);
+}
+
+/* Checklist */
+.checklist { list-style: none; margin-bottom: 14px; }
+.checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+}
+.checklist li:last-child { border-bottom: none; }
+.check-icon { color: var(--green); flex-shrink: 0; margin-top: 2px; }
+
+/* File tree */
+.file-tree {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  margin-bottom: 14px;
+  line-height: 2;
+}
+.ft-dir  { color: var(--blue); }
+.ft-file { color: var(--text2); }
+.ft-cmt  { color: var(--text3); }
+
+/* Divider */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 40px 0;
+}
+
+/* Success block */
+.success-block {
+  background: var(--green-bg);
+  border: 1px solid #1a5c30;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  margin-top: 16px;
+}
+.success-emoji { font-size: 36px; margin-bottom: 12px; }
+.success-title { font-size: 20px; font-weight: 700; color: var(--green); margin-bottom: 8px; }
+.success-desc  { font-size: 13px; color: #90d090; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-tag">⚡ Setup guide</div>
+    <div class="logo-title">Kalshi Arb Bot</div>
+    <div class="logo-sub">Weather markets · Paper trading</div>
+  </div>
+
+  <div class="nav-section">Steps</div>
+  <a href="#step1" class="nav-link"><span class="step-num">1</span> Download the bot</a>
+  <a href="#step2" class="nav-link"><span class="step-num">2</span> Install Python</a>
+  <a href="#step3" class="nav-link"><span class="step-num">3</span> Install dependencies</a>
+  <a href="#step4" class="nav-link"><span class="step-num">4</span> Run the bot</a>
+  <a href="#step5" class="nav-link"><span class="step-num">5</span> Open the dashboard</a>
+  <a href="#step6" class="nav-link"><span class="step-num">6</span> Understand the output</a>
+  <a href="#step7" class="nav-link"><span class="step-num">7</span> Go live (optional)</a>
+
+  <div class="os-pills">
+    <button class="os-pill active" onclick="setOS('mac')">Mac</button>
+    <button class="os-pill" onclick="setOS('win')">Windows</button>
+    <button class="os-pill" onclick="setOS('lin')">Linux</button>
+  </div>
+</nav>
+
+<!-- Main content -->
+<main class="main">
+
+  <div class="page-header">
+    <div class="page-eyebrow">Step-by-step setup</div>
+    <h1 class="page-title">Get the Kalshi Weather<br>Arb Bot running locally</h1>
+    <p class="page-desc">This guide walks you through downloading the bot files, installing Python, and running the paper trading engine with the live dashboard — all on your own machine.</p>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step" id="step1">
+    <div class="step-header">
+      <div class="step-badge green">1</div>
+      <div>
+        <div class="step-title">Download the bot files</div>
+        <div class="step-subtitle">Get everything from Claude onto your computer</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">Download all six files from the Claude conversation above. You'll need to create a folder to keep them organized.</p>
+
+      <div class="info-box tip">
+        <span class="info-icon">💡</span>
+        <span>Make a folder called <code>kalshi_bot</code> anywhere on your computer — Desktop, Documents, wherever you prefer. Then download all files into it, keeping the subfolder structure.</span>
+      </div>
+
+      <p class="step-desc">Your folder should look exactly like this:</p>
+
+      <div class="file-tree">
+        <span class="ft-dir">kalshi_bot/</span><br>
+        &nbsp;&nbsp;├── <span class="ft-file">run.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-cmt">← start here</span><br>
+        &nbsp;&nbsp;├── <span class="ft-file">requirements.txt</span><br>
+        &nbsp;&nbsp;├── <span class="ft-dir">bot/</span><br>
+        &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── <span class="ft-file">engine.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-cmt">← bot brain</span><br>
+        &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── <span class="ft-file">server.py</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-cmt">← API server</span><br>
+        &nbsp;&nbsp;└── <span class="ft-dir">dashboard/</span><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="ft-file">index.html</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-cmt">← dashboard</span><br>
+      </div>
+
+      <div class="info-box warn">
+        <span class="info-icon">⚠️</span>
+        <span>Do not put <code>engine.py</code> or <code>server.py</code> directly in the root — they must be inside a <code>bot/</code> subfolder. The bot creates a <code>data/</code> folder automatically when it first runs.</span>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- STEP 2 -->
+  <div class="step" id="step2">
+    <div class="step-header">
+      <div class="step-badge blue">2</div>
+      <div>
+        <div class="step-title">Install Python 3.10+</div>
+        <div class="step-subtitle">Skip this step if you already have Python installed</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">Check if Python is already installed by opening a terminal and running:</p>
+
+      <div class="code-block">
+        <div class="code-label">
+          <span>Terminal / Command Prompt</span>
+          <button class="copy-btn" onclick="copyCode(this, 'python3 --version')">Copy</button>
+        </div>
+        <pre><span class="cmd">python3 --version</span>   <span class="cmt"># Mac / Linux</span>
+<span class="cmd">python --version</span>    <span class="cmt"># Windows</span></pre>
+      </div>
+
+      <p class="step-desc">If you see <code>Python 3.10.x</code> or higher, skip to Step 3. If you get an error or see Python 2.x, install Python:</p>
+
+      <!-- Mac -->
+      <div id="install-mac">
+        <div class="info-box note">
+          <span class="info-icon">🍎</span>
+          <span><strong>Mac:</strong> The easiest way is to install via the official installer at <strong>python.org/downloads</strong> — download the macOS package and run it. Alternatively, if you have Homebrew: <code>brew install python3</code></span>
+        </div>
+        <div class="code-block">
+          <div class="code-label"><span>Terminal — Homebrew (if you have it)</span><button class="copy-btn" onclick="copyCode(this, 'brew install python3')">Copy</button></div>
+          <pre><span class="cmd">brew install python3</span></pre>
+        </div>
+      </div>
+
+      <!-- Windows -->
+      <div id="install-win" style="display:none">
+        <div class="info-box note">
+          <span class="info-icon">🪟</span>
+          <span><strong>Windows:</strong> Download the installer from <strong>python.org/downloads</strong>. On the first screen, check <strong>"Add Python to PATH"</strong> before clicking Install — this is critical.</span>
+        </div>
+        <div class="info-box warn">
+          <span class="info-icon">⚠️</span>
+          <span>After installing on Windows, use <code>python</code> instead of <code>python3</code> and <code>pip</code> instead of <code>pip3</code> throughout this guide.</span>
+        </div>
+      </div>
+
+      <!-- Linux -->
+      <div id="install-lin" style="display:none">
+        <div class="code-block">
+          <div class="code-label"><span>Terminal — Ubuntu / Debian</span><button class="copy-btn" onclick="copyCode(this, 'sudo apt update && sudo apt install python3 python3-pip -y')">Copy</button></div>
+          <pre><span class="cmd">sudo apt update && sudo apt install python3 python3-pip -y</span></pre>
+        </div>
+      </div>
+
+      <p class="step-desc">Verify it worked:</p>
+      <div class="code-block">
+        <div class="code-label"><span>Terminal</span><button class="copy-btn" onclick="copyCode(this, 'python3 --version')">Copy</button></div>
+        <pre><span class="cmd">python3 --version</span>
+<span class="cmt"># Should print: Python 3.10.x or higher</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- STEP 3 -->
+  <div class="step" id="step3">
+    <div class="step-header">
+      <div class="step-badge green">3</div>
+      <div>
+        <div class="step-title">Open a terminal in the bot folder</div>
+        <div class="step-subtitle">Navigate to where you saved the files</div>
+      </div>
+    </div>
+    <div class="step-body">
+
+      <!-- Mac -->
+      <div id="terminal-mac">
+        <p class="step-desc">On Mac, open Terminal (search Spotlight for "Terminal"), then navigate to your folder:</p>
+        <div class="code-block">
+          <div class="code-label"><span>Terminal</span><button class="copy-btn" onclick="copyCode(this, 'cd ~/Desktop/kalshi_bot')">Copy</button></div>
+          <pre><span class="cmd">cd ~/Desktop/kalshi_bot</span>   <span class="cmt"># if saved to Desktop</span>
+<span class="cmt"># or</span>
+<span class="cmd">cd ~/Documents/kalshi_bot</span> <span class="cmt"># if saved to Documents</span></pre>
+        </div>
+        <div class="info-box tip">
+          <span class="info-icon">💡</span>
+          <span>Shortcut: In Finder, right-click the <code>kalshi_bot</code> folder and choose <strong>"New Terminal at Folder"</strong> — this opens a terminal already in the right place.</span>
+        </div>
+      </div>
+
+      <!-- Windows -->
+      <div id="terminal-win" style="display:none">
+        <p class="step-desc">On Windows, open the <code>kalshi_bot</code> folder in File Explorer, then click the address bar, type <code>cmd</code>, and press Enter. Or open Command Prompt and navigate:</p>
+        <div class="code-block">
+          <div class="code-label"><span>Command Prompt</span><button class="copy-btn" onclick="copyCode(this, 'cd C:\\Users\\YourName\\Desktop\\kalshi_bot')">Copy</button></div>
+          <pre><span class="cmd">cd C:\Users\YourName\Desktop\kalshi_bot</span></pre>
+        </div>
+      </div>
+
+      <!-- Linux -->
+      <div id="terminal-lin" style="display:none">
+        <div class="code-block">
+          <div class="code-label"><span>Terminal</span><button class="copy-btn" onclick="copyCode(this, 'cd ~/kalshi_bot')">Copy</button></div>
+          <pre><span class="cmd">cd ~/kalshi_bot</span></pre>
+        </div>
+      </div>
+
+      <p class="step-desc">Confirm you're in the right place:</p>
+      <div class="code-block">
+        <div class="code-label">
+          <span>Terminal</span>
+          <button class="copy-btn" onclick="copyCode(this, 'ls')">Copy</button>
+        </div>
+        <pre id="ls-cmd"><span class="cmd">ls</span>   <span class="cmt"># Mac / Linux — should show run.py, bot/, dashboard/</span>
+<span class="cmd">dir</span>  <span class="cmt"># Windows</span></pre>
+      </div>
+
+      <p class="step-desc">Now install the three required Python packages:</p>
+      <div class="code-block">
+        <div class="code-label"><span>Terminal — install dependencies</span><button class="copy-btn" onclick="copyCode(this, 'pip3 install flask flask-cors requests')">Copy</button></div>
+        <pre><span class="cmd">pip3 install flask flask-cors requests</span>
+<span class="cmt"># Windows: use  pip install flask flask-cors requests</span></pre>
+      </div>
+
+      <div class="info-box tip">
+        <span class="info-icon">💡</span>
+        <span>If you get a permissions error on Mac/Linux, add <code>--user</code> to the end: <code>pip3 install flask flask-cors requests --user</code></span>
+      </div>
+
+      <p class="step-desc">You should see output ending in <code>Successfully installed flask flask-cors requests</code>. That's it — no other packages needed.</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- STEP 4 -->
+  <div class="step" id="step4">
+    <div class="step-header">
+      <div class="step-badge amber">4</div>
+      <div>
+        <div class="step-title">Start the bot</div>
+        <div class="step-subtitle">One command launches everything</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">From inside the <code>kalshi_bot</code> folder in your terminal, run:</p>
+
+      <div class="code-block">
+        <div class="code-label"><span>Terminal</span><button class="copy-btn" onclick="copyCode(this, 'python3 run.py')">Copy</button></div>
+        <pre><span class="cmd">python3 run.py</span>   <span class="cmt"># Mac / Linux</span>
+<span class="cmd">python run.py</span>    <span class="cmt"># Windows</span></pre>
+      </div>
+
+      <p class="step-desc">You should immediately see output like this in the terminal:</p>
+
+      <div class="code-block">
+        <div class="code-label"><span>Expected terminal output</span></div>
+        <pre><span class="cmt">═══ Kalshi Weather Arb Bot ═══</span>
+<span class="cmt">  Data: kalshi_bot/data/state.json</span>
+<span class="cmt">  Logs: kalshi_bot/data/bot.log</span>
+<span class="cmt">  API:  http://localhost:5000</span>
+<span class="cmt">  Open dashboard/index.html in your browser</span>
+
+<span class="num">2026-06-05 09:00:01  INFO   ═══ Kalshi Weather Arb Bot starting ═══</span>
+<span class="num">2026-06-05 09:00:01  INFO   ── scan start ──</span>
+<span class="num">2026-06-05 09:00:02  INFO     New York: simulated forecast 71.4°F</span>
+<span class="num">2026-06-05 09:00:02  INFO     TRADE  New York 69° to 71°  YES  edge=11.2%</span>
+<span class="num">2026-06-05 09:00:03  INFO   ── scan done: 45 checked, 8 edges, 4 trades ──</span></pre>
+      </div>
+
+      <div class="info-box note">
+        <span class="info-icon">ℹ️</span>
+        <span>The bot scans markets every <strong>5 minutes</strong> automatically. The first scan runs immediately when you start it. Leave this terminal window open — closing it stops the bot.</span>
+      </div>
+
+      <div class="info-box warn">
+        <span class="info-icon">⚠️</span>
+        <span>If you see <code>Address already in use</code>, something else is using port 5000. Run: <code>python3 run.py --port 5001</code> and update the API URL in <code>dashboard/index.html</code> from <code>localhost:5000</code> to <code>localhost:5001</code>.</span>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- STEP 5 -->
+  <div class="step" id="step5">
+    <div class="step-header">
+      <div class="step-badge blue">5</div>
+      <div>
+        <div class="step-title">Open the dashboard</div>
+        <div class="step-subtitle">Your live paper trading monitor</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">With the bot running in the terminal, open the dashboard in your browser:</p>
+
+      <!-- Mac -->
+      <div id="dash-mac">
+        <div class="code-block">
+          <div class="code-label"><span>Terminal — open dashboard (new tab)</span><button class="copy-btn" onclick="copyCode(this, 'open dashboard/index.html')">Copy</button></div>
+          <pre><span class="cmd">open dashboard/index.html</span></pre>
+        </div>
+        <p class="step-desc">Or manually: open Finder → navigate to <code>kalshi_bot/dashboard/</code> → double-click <code>index.html</code></p>
+      </div>
+
+      <!-- Windows -->
+      <div id="dash-win" style="display:none">
+        <div class="code-block">
+          <div class="code-label"><span>Command Prompt</span><button class="copy-btn" onclick="copyCode(this, 'start dashboard\\index.html')">Copy</button></div>
+          <pre><span class="cmd">start dashboard\index.html</span></pre>
+        </div>
+        <p class="step-desc">Or manually: open File Explorer → navigate to <code>kalshi_bot\dashboard\</code> → double-click <code>index.html</code></p>
+      </div>
+
+      <!-- Linux -->
+      <div id="dash-lin" style="display:none">
+        <div class="code-block">
+          <div class="code-label"><span>Terminal</span><button class="copy-btn" onclick="copyCode(this, 'xdg-open dashboard/index.html')">Copy</button></div>
+          <pre><span class="cmd">xdg-open dashboard/index.html</span></pre>
+        </div>
+      </div>
+
+      <p class="step-desc">The dashboard polls the bot's API at <code>http://localhost:5000</code> every 5 seconds and updates automatically. You'll see:</p>
+
+      <ul class="checklist">
+        <li><span class="check-icon">✦</span> <strong>Dashboard tab</strong> — bankroll, P&L, win rate, open positions, P&L chart</li>
+        <li><span class="check-icon">✦</span> <strong>Live signals tab</strong> — every city's GFS forecast vs Kalshi price, edge highlighted in green</li>
+        <li><span class="check-icon">✦</span> <strong>Trade log tab</strong> — full history of paper trades with entry, exit, and P&L</li>
+        <li><span class="check-icon">✦</span> <strong>Bot logs tab</strong> — raw terminal output from the Python engine</li>
+      </ul>
+
+      <div class="info-box tip">
+        <span class="info-icon">💡</span>
+        <span>If the dashboard shows <strong>"Demo mode"</strong> in amber, the bot server isn't reachable. Make sure <code>python3 run.py</code> is still running in your terminal and try refreshing the page.</span>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- STEP 6 -->
+  <div class="step" id="step6">
+    <div class="step-header">
+      <div class="step-badge purple">6</div>
+      <div>
+        <div class="step-title">Understand the output</div>
+        <div class="step-subtitle">What the numbers mean</div>
+      </div>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">Here's what each metric in the dashboard tells you:</p>
+
+      <ul class="checklist">
+        <li><span class="check-icon">✦</span><div><strong>Edge %</strong> — the gap between GFS forecast probability and Kalshi's price. A 12% edge means the bot thinks the true probability is 12 cents higher than what Kalshi is pricing.</div></li>
+        <li><span class="check-icon">✦</span><div><strong>BUY YES</strong> — bot thinks Kalshi is underpricing the event happening. You'd buy YES contracts.</div></li>
+        <li><span class="check-icon">✦</span><div><strong>BUY NO</strong> — bot thinks Kalshi is overpricing the event. You'd buy NO contracts (essentially shorting YES).</div></li>
+        <li><span class="check-icon">✦</span><div><strong>Win rate</strong> — % of settled trades that were profitable. Expect 50–65% with real forecast data. Higher edge = higher win rate.</div></li>
+        <li><span class="check-icon">✦</span><div><strong>Open positions</strong> — paper trades currently active, waiting for Kalshi to settle them.</div></li>
+        <li><span class="check-icon">✦</span><div><strong>Simulated vs live forecast</strong> — check the Bot Logs tab. If you see "simulated forecast" it means the Open-Meteo API was unreachable; the bot still runs using realistic seasonal estimates.</div></li>
+      </ul>
+
+      <div class="info-box note">
+        <span class="info-icon">ℹ️</span>
+        <span>The paper trading simulation settles positions after 6–10 hours with a win probability proportional to the edge found. In live trading, Kalshi settles at midnight based on the NWS Daily Climate Report.</span>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- STEP 7 -->
+  <div class="step" id="step7">
+    <div class="step-header">
+      <div class="step-badge red">7</div>
+      <div>
+        <div class="step-title">Go live with real money (optional)</div>
+        <div class="step-subtitle">Only do this after paper trading shows consistent profit</div>
+      </div>
+    </div>
+    <div class="step-body">
+
+      <div class="info-box danger">
+        <span class="info-icon">🚨</span>
+        <span><strong>Only proceed when your paper trading win rate is above 55% consistently for 2+ weeks.</strong> Real money trading carries real risk of loss.</span>
+      </div>
+
+      <p class="step-desc">To connect to real Kalshi markets, you need an API key:</p>
+
+      <ul class="checklist">
+        <li><span class="check-icon">1</span> Go to <strong>kalshi.com</strong> → sign in → Settings → API</li>
+        <li><span class="check-icon">2</span> Create a new API key and copy it</li>
+        <li><span class="check-icon">3</span> Open <code>bot/engine.py</code> in a text editor</li>
+        <li><span class="check-icon">4</span> Find the <code>fetch_kalshi()</code> function and add your key to the headers</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label"><span>bot/engine.py — add your API key here</span></div>
+        <pre><span class="kw">def</span> fetch_kalshi(prefix):
+    <span class="kw">try</span>:
+        r = requests.get(
+            <span class="str">f"{KALSHI_BASE}/markets"</span>,
+            params={<span class="str">"series_ticker"</span>: prefix, <span class="str">"status"</span>: <span class="str">"open"</span>},
+            headers={
+                <span class="str">"Authorization"</span>: <span class="str">"Bearer YOUR_API_KEY_HERE"</span>
+            },
+            timeout=<span class="num">8</span>
+        )</pre>
+      </div>
+
+      <p class="step-desc">To place real orders, you'll also need to implement the order endpoint in <code>engine.py</code>. The Kalshi docs are at <strong>docs.kalshi.com</strong> — look for <code>POST /portfolio/orders</code>.</p>
+
+      <div class="info-box warn">
+        <span class="info-icon">⚠️</span>
+        <span>Start with a small real-money bankroll (e.g. $100–$200) and small stakes ($5–$10/trade) before scaling up. Verify the live win rate matches your paper trading results.</span>
+      </div>
+
+      <div class="success-block">
+        <div class="success-emoji">🎉</div>
+        <div class="success-title">You're all set!</div>
+        <div class="success-desc">The bot is running, the dashboard is live, and paper trades are happening automatically every 5 minutes.<br>Come back after a few days of paper trading and share your win rate — I can help you tune the edge threshold and strategy.</div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+let currentOS = 'mac';
+
+function setOS(os) {
+  currentOS = os;
+  document.querySelectorAll('.os-pill').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+
+  // Toggle install section
+  ['mac','win','lin'].forEach(o => {
+    const el = document.getElementById('install-' + o);
+    if (el) el.style.display = o === os ? 'block' : 'none';
+  });
+  ['terminal','dash'].forEach(prefix => {
+    ['mac','win','lin'].forEach(o => {
+      const el = document.getElementById(prefix + '-' + o);
+      if (el) el.style.display = o === os ? 'block' : 'none';
+    });
+  });
+}
+
+function copyCode(btn, text) {
+  // Get text from nearby pre if not provided
+  if (!text) {
+    const pre = btn.closest('.code-block').querySelector('pre');
+    text = pre ? pre.innerText : '';
+  }
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// Init OS sections
+setOS('mac');
+document.querySelector('.os-pill').classList.add('active');
+
+// Highlight active nav on scroll
+const steps = document.querySelectorAll('.step');
+const navLinks = document.querySelectorAll('.nav-link');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      navLinks.forEach(l => {
+        l.classList.remove('active');
+        if (l.getAttribute('href') === '#' + id) l.classList.add('active');
+      });
+    }
+  });
+}, { threshold: 0.4 });
+steps.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

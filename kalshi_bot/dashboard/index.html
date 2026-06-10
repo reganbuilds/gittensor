@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalshi Weather Arb Bot</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg:       #0C0D0F;
+  --bg2:      #131417;
+  --bg3:      #1A1C21;
+  --border:   #252730;
+  --border2:  #2E3040;
+  --text:     #E8EAF0;
+  --text2:    #8B8FA8;
+  --text3:    #555870;
+  --green:    #4ADE80;
+  --green-d:  #166534;
+  --green-bg: #052010;
+  --red:      #F87171;
+  --red-bg:   #1C0505;
+  --blue:     #60A5FA;
+  --blue-bg:  #051524;
+  --amber:    #FBBF24;
+  --amber-bg: #1A1000;
+  --accent:   #7C3AED;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; min-height: 100vh; }
+.mono { font-family: 'IBM Plex Mono', monospace; }
+
+/* Layout */
+.shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-header {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--green);
+  text-transform: uppercase;
+}
+.logo-sub { font-size: 10px; color: var(--text3); margin-top: 3px; letter-spacing: 0.05em; }
+
+.status-block {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  display: inline-block; margin-right: 6px;
+  animation: pulse 2s infinite;
+}
+.status-dot.running { background: var(--green); }
+.status-dot.stopped { background: var(--text3); animation: none; }
+.status-dot.scanning { background: var(--blue); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.status-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500; }
+.status-last { font-size: 10px; color: var(--text3); margin-top: 4px; }
+
+.nav-section { padding: 12px 18px 6px; font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; }
+.nav-btn {
+  width: 100%; padding: 8px 18px; text-align: left; background: none; border: none;
+  color: var(--text2); cursor: pointer; font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px; display: flex; align-items: center; gap: 8px; transition: all 0.15s;
+}
+.nav-btn:hover { background: var(--bg3); color: var(--text); }
+.nav-btn.active { background: var(--bg3); color: var(--green); border-left: 2px solid var(--green); }
+.nav-icon { font-size: 14px; width: 16px; }
+
+.ctrl-section { padding: 14px 18px; border-top: 1px solid var(--border); margin-top: auto; }
+.ctrl-btn {
+  width: 100%; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer; border: 1px solid; font-weight: 500; margin-bottom: 6px; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-start { background: var(--green-bg); color: var(--green); border-color: #1a5c30; }
+.btn-start:hover { background: #0a3018; }
+.btn-stop  { background: var(--red-bg);  color: var(--red);   border-color: #5c1a1a; }
+.btn-stop:hover  { background: #2a0808; }
+.btn-reset { background: var(--bg3); color: var(--text2); border-color: var(--border2); }
+.btn-reset:hover { color: var(--text); }
+.btn-scan  { background: var(--blue-bg); color: var(--blue);  border-color: #1a3a5c; }
+.btn-scan:hover { background: #0a2030; }
+
+/* Main */
+.main { overflow-y: auto; }
+.page { display: none; padding: 24px; }
+.page.active { display: block; }
+
+.page-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.page-sub   { font-size: 12px; color: var(--text3); margin-bottom: 20px; }
+
+/* Metrics row */
+.metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+.metric { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.metric-l { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+.metric-v { font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 500; line-height: 1; }
+.metric-v.g { color: var(--green); } .metric-v.r { color: var(--red); }
+.metric-s { font-size: 10px; color: var(--text3); margin-top: 4px; }
+
+/* Cards */
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+.card-t { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.09em; font-weight: 500; margin-bottom: 12px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+
+/* Signals grid */
+.sig-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; position: relative;
+}
+.sig-card.edge { border-color: #1a5c30; background: var(--green-bg); }
+.sig-city { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
+.sig-sub  { font-size: 10px; color: var(--text3); margin-bottom: 10px; }
+.sig-row  { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
+.sig-lbl  { color: var(--text2); }
+.sig-val  { font-family: 'IBM Plex Mono', monospace; font-weight: 500; }
+.edge-tag {
+  position: absolute; top: 10px; right: 10px;
+  font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 600;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.et-edge  { background: var(--green-bg); color: var(--green); border: 1px solid #1a5c30; }
+.et-none  { background: var(--bg2); color: var(--text3); border: 1px solid var(--border); }
+.dir-yes  { color: var(--blue); font-weight: 600; }
+.dir-no   { color: var(--amber); font-weight: 600; }
+
+/* Bar */
+.bar-wrap { height: 4px; background: var(--bg); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+
+/* Trade log */
+.tlog-head, .tlog-row {
+  display: grid;
+  grid-template-columns: 100px 90px 1fr 60px 55px 70px 70px;
+  gap: 8px; font-size: 11px; padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.tlog-head { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
+.tlog-row:last-child { border-bottom: none; }
+.badge {
+  font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500;
+  font-family: 'IBM Plex Mono', monospace; display: inline-block;
+}
+.b-yes    { background: var(--blue-bg);  color: var(--blue);  border: 1px solid #1a3a5c; }
+.b-no     { background: var(--amber-bg); color: var(--amber); border: 1px solid #3a2800; }
+.b-open   { background: var(--bg3);      color: var(--text2); border: 1px solid var(--border2); }
+.b-won    { background: var(--green-bg); color: var(--green); border: 1px solid #1a5c30; }
+.b-lost   { background: var(--red-bg);   color: var(--red);   border: 1px solid #5c1a1a; }
+.pnl-g { color: var(--green); font-weight: 500; font-family: 'IBM Plex Mono', monospace; }
+.pnl-r { color: var(--red);   font-weight: 500; font-family: 'IBM Plex Mono', monospace; }
+.pnl-n { color: var(--text2); font-family: 'IBM Plex Mono', monospace; }
+
+/* Logs page */
+.log-box {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px 16px; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  line-height: 1.9; max-height: 500px; overflow-y: auto; color: var(--text2);
+}
+.log-info { color: var(--text2); }
+.log-win  { color: var(--green); }
+.log-loss { color: var(--red); }
+.log-trade{ color: var(--blue); }
+.log-warn { color: var(--amber); }
+.log-err  { color: var(--red); }
+
+/* Empty state */
+.empty { font-size: 12px; color: var(--text3); padding: 16px 0; text-align: center; }
+
+/* Chart */
+.chart-wrap { position: relative; width: 100%; height: 200px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">⚡ Arb Bot</div>
+    <div class="logo-sub">Kalshi Weather · Paper Trading</div>
+  </div>
+
+  <div class="status-block">
+    <div>
+      <span class="status-dot stopped" id="statusDot"></span>
+      <span class="status-label mono" id="statusLabel">Stopped</span>
+    </div>
+    <div class="status-last" id="statusLast">Never scanned</div>
+  </div>
+
+  <div class="nav-section">Views</div>
+  <button class="nav-btn active" onclick="showPage('dashboard',this)"><span class="nav-icon">◈</span> Dashboard</button>
+  <button class="nav-btn" onclick="showPage('signals',this)"><span class="nav-icon">⚡</span> Live signals</button>
+  <button class="nav-btn" onclick="showPage('trades',this)"><span class="nav-icon">◎</span> Trade log</button>
+  <button class="nav-btn" onclick="showPage('logs',this)"><span class="nav-icon">≡</span> Bot logs</button>
+
+  <div class="ctrl-section">
+    <button class="ctrl-btn btn-scan"  onclick="apiAction('scan')">↻ Scan now</button>
+    <button class="ctrl-btn btn-start" id="startBtn" onclick="apiAction('start')">▶ Start bot</button>
+    <button class="ctrl-btn btn-stop"  id="stopBtn"  onclick="apiAction('stop')" disabled>■ Stop</button>
+    <button class="ctrl-btn btn-reset" onclick="apiAction('reset')">⟳ Reset</button>
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="main">
+
+  <!-- Dashboard -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub">Real-time paper trading performance</div>
+
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-l">Bankroll</div>
+        <div class="metric-v mono" id="mBank">$1,000</div>
+        <div class="metric-s">starting $1,000</div>
+      </div>
+      <div class="metric">
+        <div class="metric-l">Total P&L</div>
+        <div class="metric-v mono" id="mPnl">$0.00</div>
+        <div class="metric-s" id="mPnlPct">0.00%</div>
+      </div>
+      <div class="metric">
+        <div class="metric-l">Win rate</div>
+        <div class="metric-v mono" id="mWin">—</div>
+        <div class="metric-s" id="mWinSub">0 settled</div>
+      </div>
+      <div class="metric">
+        <div class="metric-l">Open positions</div>
+        <div class="metric-v mono" id="mOpen">0</div>
+        <div class="metric-s">paper trades</div>
+      </div>
+      <div class="metric">
+        <div class="metric-l">Edges found</div>
+        <div class="metric-v mono" id="mEdges">0</div>
+        <div class="metric-s" id="mScans">0 scans</div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-t">Cumulative P&L</div>
+        <div class="chart-wrap"><canvas id="pnlChart" aria-label="Cumulative P&L chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-t">Open positions</div>
+        <div id="openPosList"><div class="empty">No open positions</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-t">Recent settled trades</div>
+      <div class="tlog-head"><span>Settled</span><span>City</span><span>Market</span><span>Dir</span><span>Edge</span><span>Status</span><span>P&L</span></div>
+      <div id="recentTrades"><div class="empty">No settled trades yet</div></div>
+    </div>
+  </div>
+
+  <!-- Signals -->
+  <div class="page" id="page-signals">
+    <div class="page-title">Live signals</div>
+    <div class="page-sub">Latest scan results — GFS forecast vs Kalshi price</div>
+    <div class="grid3" id="signalGrid"><div class="empty" style="grid-column:1/-1">No scan data yet. Start the bot or press Scan Now.</div></div>
+  </div>
+
+  <!-- Trades -->
+  <div class="page" id="page-trades">
+    <div class="page-title">Trade log</div>
+    <div class="page-sub">All settled paper trades</div>
+    <div class="card">
+      <div class="tlog-head"><span>Settled</span><span>City</span><span>Market</span><span>Dir</span><span>Edge</span><span>Status</span><span>P&L</span></div>
+      <div id="allTrades"><div class="empty">No trades yet</div></div>
+    </div>
+  </div>
+
+  <!-- Logs -->
+  <div class="page" id="page-logs">
+    <div class="page-title">Bot logs</div>
+    <div class="page-sub">Live output from the Python engine</div>
+    <div class="log-box" id="logBox">Waiting for logs...</div>
+  </div>
+
+</main>
+</div>
+
+<script>
+const API = "http://localhost:5000/api";
+let pnlChart = null;
+let state = null;
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'logs') fetchLogs();
+}
+
+// ── API calls ─────────────────────────────────────────────────────────────────
+async function apiAction(action) {
+  if (action === 'scan') {
+    document.getElementById('statusLabel').textContent = 'Scanning...';
+  }
+  try {
+    const method = action === 'scan' ? 'GET' : 'POST';
+    const url = action === 'scan' ? `${API}/state` : `${API}/${action}`;
+    const r = await fetch(url, { method });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    if (action !== 'scan') setTimeout(fetchState, 500);
+  } catch (e) {
+    showOfflineState();
+    console.warn('API not reachable:', e.message, '— showing demo mode');
+  }
+}
+
+// ── State fetch ───────────────────────────────────────────────────────────────
+async function fetchState() {
+  try {
+    const r = await fetch(`${API}/state`, { signal: AbortSignal.timeout(4000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    state = await r.json();
+    renderAll(state);
+  } catch (e) {
+    showOfflineState();
+  }
+}
+
+async function fetchLogs() {
+  try {
+    const r = await fetch(`${API}/logs`, { signal: AbortSignal.timeout(4000) });
+    const data = await r.json();
+    renderLogs(data.lines || []);
+  } catch (e) {
+    renderLogs(["[info] Bot server not running — start with: python run.py"]);
+  }
+}
+
+// ── Demo/offline state ────────────────────────────────────────────────────────
+function showOfflineState() {
+  const demo = makeDemoState();
+  renderAll(demo);
+  const label = document.getElementById('statusLabel');
+  label.textContent = 'Demo mode';
+  label.style.color = '#FBBF24';
+  document.getElementById('statusDot').className = 'status-dot stopped';
+  document.getElementById('statusLast').textContent = 'Connect server: python run.py';
+}
+
+function makeDemoState() {
+  const settled = [];
+  let cum = 0;
+  const cities = ['New York','Chicago','Miami','Los Angeles','Denver'];
+  const now = Date.now();
+  for (let i = 0; i < 12; i++) {
+    const won = Math.random() > 0.42;
+    const edge = +(0.08 + Math.random() * 0.15).toFixed(3);
+    const pnl = won ? +(35 + Math.random() * 40).toFixed(2) : -(Math.random() * 50).toFixed(2);
+    cum += pnl;
+    const ts = new Date(now - (12-i)*3600000).toISOString();
+    settled.push({
+      city: cities[i % cities.length],
+      subtitle: `${60+i*2}° to ${62+i*2}°`,
+      direction: Math.random()>0.5?'YES':'NO',
+      edge, stake: 50,
+      kalshi_mid: +(0.35+Math.random()*0.3).toFixed(3),
+      forecast_prob: +(0.35+Math.random()*0.3+edge).toFixed(3),
+      status: won?'won':'lost', pnl,
+      settled_at: ts, entered_at: ts,
+    });
+  }
+  const pnlHistory = [{t:'Start',pnl:0}];
+  let c2 = 0;
+  settled.forEach(t => { c2+=t.pnl; pnlHistory.push({t:t.settled_at.slice(11,16),pnl:+c2.toFixed(2)}); });
+  const wins = settled.filter(t=>t.status==='won').length;
+  return {
+    bankroll: +(1000+cum).toFixed(2), total_pnl: +cum.toFixed(2),
+    win_rate: wins/settled.length, trade_count: settled.length,
+    edges_found: settled.length + 8, scan_count: 14,
+    positions: [
+      {city:'New York',subtitle:'68° to 70°',direction:'YES',edge:0.112,stake:50,kalshi_mid:0.41,forecast_prob:0.522,entered_at:new Date().toISOString(),status:'open'},
+      {city:'Chicago',subtitle:'62° to 64°',direction:'NO',edge:0.094,stake:50,kalshi_mid:0.67,forecast_prob:0.577,entered_at:new Date().toISOString(),status:'open'},
+    ],
+    settled: settled,
+    pnl_history: pnlHistory,
+    last_scan: new Date(now-180000).toISOString(),
+    status: 'demo',
+    recent_signals: cities.map((city,i)=>{
+      const fp = 0.3+Math.random()*0.5;
+      const km = fp+(Math.random()-0.5)*0.2;
+      const edge = Math.abs(fp-km);
+      return {city,ticker:`SIM-${60+i*2}`,subtitle:`${60+i*2}° to ${62+i*2}°`,
+        threshold_f:60+i*2, forecast_mean_f:61+i*2,
+        forecast_prob:+fp.toFixed(3),kalshi_mid:+Math.min(0.97,Math.max(0.03,km)).toFixed(3),
+        direction:fp>km?'YES':'NO',edge:+edge.toFixed(3),has_edge:edge>=0.08};
+    }),
+  };
+}
+
+// ── Renderers ─────────────────────────────────────────────────────────────────
+function renderAll(s) {
+  renderMetrics(s);
+  renderPnlChart(s.pnl_history || []);
+  renderOpenPositions(s.positions || []);
+  renderRecentTrades((s.settled||[]).slice(-6).reverse());
+  renderAllTrades((s.settled||[]).slice().reverse());
+  renderSignals(s.recent_signals || []);
+  renderStatus(s);
+}
+
+function renderMetrics(s) {
+  const pnl = s.total_pnl || 0;
+  const pnlEl = document.getElementById('mPnl');
+  pnlEl.textContent = (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2);
+  pnlEl.className = 'metric-v mono ' + (pnl >= 0 ? 'g' : 'r');
+  document.getElementById('mPnlPct').textContent = ((pnl/1000)*100).toFixed(2)+'% return';
+  document.getElementById('mBank').textContent = '$' + (s.bankroll||1000).toFixed(2);
+  const wr = s.win_rate;
+  const wrEl = document.getElementById('mWin');
+  if (wr !== null && wr !== undefined) {
+    wrEl.textContent = Math.round(wr*100)+'%';
+    wrEl.className = 'metric-v mono ' + (wr >= 0.5 ? 'g' : 'r');
+  } else {
+    wrEl.textContent = '—';
+    wrEl.className = 'metric-v mono';
+  }
+  document.getElementById('mWinSub').textContent = (s.trade_count||0)+' settled';
+  document.getElementById('mOpen').textContent = (s.positions||[]).filter(p=>p.status==='open').length;
+  document.getElementById('mEdges').textContent = s.edges_found || 0;
+  document.getElementById('mScans').textContent = (s.scan_count||0)+' scans';
+}
+
+function renderPnlChart(history) {
+  const labels = history.map(h => h.t);
+  const data   = history.map(h => h.pnl);
+  const lastPnl = data[data.length-1] || 0;
+  const color = lastPnl >= 0 ? '#4ADE80' : '#F87171';
+  const bgColor = lastPnl >= 0 ? 'rgba(74,222,128,0.07)' : 'rgba(248,113,113,0.07)';
+
+  if (pnlChart) {
+    pnlChart.data.labels = labels;
+    pnlChart.data.datasets[0].data = data;
+    pnlChart.data.datasets[0].borderColor = color;
+    pnlChart.data.datasets[0].backgroundColor = bgColor;
+    pnlChart.update('none');
+    return;
+  }
+  const ctx = document.getElementById('pnlChart');
+  pnlChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [{
+      data, borderColor: color, backgroundColor: bgColor,
+      borderWidth: 1.5, pointRadius: 2, fill: true, tension: 0.35,
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#555870', font: { size: 9, family: 'IBM Plex Mono' }, maxTicksLimit: 8 }, grid: { color: '#1A1C21' } },
+        y: { ticks: { color: '#555870', font: { size: 9, family: 'IBM Plex Mono' }, callback: v => (v<0?'-$':'$')+Math.abs(v).toFixed(0) }, grid: { color: '#1A1C21' } },
+      }
+    }
+  });
+}
+
+function renderOpenPositions(positions) {
+  const open = positions.filter(p => p.status === 'open');
+  const el = document.getElementById('openPosList');
+  if (!open.length) { el.innerHTML = '<div class="empty">No open positions</div>'; return; }
+  el.innerHTML = open.map(p => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:11px">
+      <div>
+        <span style="font-weight:500">${p.city}</span>
+        <span style="color:var(--text3);margin:0 6px">${p.subtitle}</span>
+        <span class="badge ${p.direction==='YES'?'b-yes':'b-no'}">${p.direction}</span>
+      </div>
+      <div style="text-align:right">
+        <div class="mono" style="color:var(--green)">+${(p.edge*100).toFixed(1)}% edge</div>
+        <div style="color:var(--text3);font-size:10px">$${p.stake} stake</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function tradeRowHtml(t) {
+  const settled = t.settled_at ? t.settled_at.slice(0,16).replace('T',' ') : '—';
+  const dirBadge = `<span class="badge ${t.direction==='YES'?'b-yes':'b-no'}">${t.direction}</span>`;
+  const statusBadge = t.status==='open'?'<span class="badge b-open">Open</span>':
+    t.status==='won'?'<span class="badge b-won">Won</span>':'<span class="badge b-lost">Lost</span>';
+  const pnl = t.pnl;
+  const pnlStr = pnl === null || pnl === undefined ? '<span class="pnl-n">pending</span>' :
+    `<span class="${pnl>=0?'pnl-g':'pnl-r'}">${pnl>=0?'+$':'-$'}${Math.abs(pnl).toFixed(2)}</span>`;
+  return `<div class="tlog-row">
+    <span class="mono" style="color:var(--text3);font-size:10px">${settled}</span>
+    <span>${t.city}</span>
+    <span style="color:var(--text2)">${t.subtitle||''}</span>
+    <span>${dirBadge}</span>
+    <span class="mono" style="color:var(--amber)">${(t.edge*100).toFixed(1)}%</span>
+    <span>${statusBadge}</span>
+    <span>${pnlStr}</span>
+  </div>`;
+}
+
+function renderRecentTrades(trades) {
+  const el = document.getElementById('recentTrades');
+  if (!trades.length) { el.innerHTML = '<div class="empty">No settled trades yet</div>'; return; }
+  el.innerHTML = trades.map(tradeRowHtml).join('');
+}
+
+function renderAllTrades(trades) {
+  const el = document.getElementById('allTrades');
+  if (!trades.length) { el.innerHTML = '<div class="empty">No trades yet</div>'; return; }
+  el.innerHTML = trades.map(tradeRowHtml).join('');
+}
+
+function renderSignals(signals) {
+  const el = document.getElementById('signalGrid');
+  if (!signals.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1">No signals yet — start the bot or press Scan Now</div>'; return; }
+  el.innerHTML = signals.map(s => {
+    const edge = s.edge || 0;
+    const hasEdge = s.has_edge;
+    const fillPct = Math.round((s.forecast_prob||0)*100);
+    const fillColor = s.direction==='YES' ? '#60A5FA' : '#FBBF24';
+    return `<div class="sig-card ${hasEdge?'edge':''}">
+      <span class="edge-tag ${hasEdge?'et-edge':'et-none'}">${hasEdge?'+'+( edge*100).toFixed(1)+'%':'No edge'}</span>
+      <div class="sig-city">${s.city}</div>
+      <div class="sig-sub">${s.subtitle||''}</div>
+      <div class="sig-row"><span class="sig-lbl">GFS forecast</span><span class="sig-val">${((s.forecast_prob||0)*100).toFixed(1)}%</span></div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${fillPct}%;background:${fillColor}"></div></div>
+      <div class="sig-row" style="margin-top:6px"><span class="sig-lbl">Kalshi mid</span><span class="sig-val">${((s.kalshi_mid||0)*100).toFixed(1)}¢</span></div>
+      <div class="sig-row"><span class="sig-lbl">Direction</span><span class="${s.direction==='YES'?'dir-yes':'dir-no'}">${s.direction==='YES'?'▲ BUY YES':'▼ BUY NO'}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function renderStatus(s) {
+  const dot   = document.getElementById('statusDot');
+  const label = document.getElementById('statusLabel');
+  const last  = document.getElementById('statusLast');
+  const st = s.status || 'stopped';
+  dot.className = 'status-dot ' + (st==='running'?'running':st==='demo'?'stopped':'stopped');
+  label.textContent = st==='running'?'Running':st==='demo'?'Demo mode':'Stopped';
+  label.style.color = st==='running'?'var(--green)':st==='demo'?'var(--amber)':'var(--text2)';
+  if (s.last_scan) {
+    const d = new Date(s.last_scan);
+    last.textContent = 'Last scan: ' + d.toLocaleTimeString();
+  }
+  document.getElementById('startBtn').disabled = st === 'running';
+  document.getElementById('stopBtn').disabled  = st !== 'running';
+}
+
+function renderLogs(lines) {
+  const el = document.getElementById('logBox');
+  if (!lines.length) { el.textContent = 'No logs yet.'; return; }
+  el.innerHTML = lines.map(l => {
+    let cls = 'log-info';
+    if (l.includes('WIN') || l.includes('edge')) cls = 'log-win';
+    else if (l.includes('LOSS') || l.includes('ERROR') || l.includes('error')) cls = 'log-err';
+    else if (l.includes('TRADE')) cls = 'log-trade';
+    else if (l.includes('WARNING') || l.includes('warning')) cls = 'log-warn';
+    return `<div class="${cls}">${l}</div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Poll ──────────────────────────────────────────────────────────────────────
+fetchState();
+setInterval(fetchState, 5000);
+setInterval(() => {
+  if (document.getElementById('page-logs').classList.contains('active')) fetchLogs();
+}, 4000);
+</script>
+</body>
+</html>
